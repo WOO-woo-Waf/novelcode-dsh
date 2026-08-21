@@ -1,0 +1,3 @@
+- insert:
+    - id: novelcode-workbench
+      name: '@novelcode-dsh/web'

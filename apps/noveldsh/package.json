@@ -1,0 +1,31 @@
+{
+  "name": "@novelcode-dsh/noveldsh",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "noveldsh": "./lib/cli.js"
+  },
+  "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "noveldsh": "node lib/cli.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@novelcode-dsh/contracts": "workspace:*",
+    "@novelcode-dsh/novel-author": "workspace:*",
+    "@novelcode-dsh/web": "workspace:*"
+  },
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  }
+}

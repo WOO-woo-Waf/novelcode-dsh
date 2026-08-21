@@ -1,0 +1,3 @@
+- insert:
+    - id: novelcode-novel-author
+      name: '@novelcode-dsh/novel-author'
