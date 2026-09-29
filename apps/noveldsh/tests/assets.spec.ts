@@ -10,7 +10,8 @@ describe("NovelCode DSH packaged product assets", () => {
       name: "@novelcode-dsh/web",
       dsh: { client: { platform: "web" } },
     })
-    expect(await readFile(assets.preset, "utf8")).toContain("NovelCode 小说导演")
+    expect(await readFile(assets.preset, "utf8")).toContain("NovelCode Next 小说导演")
+    expect(await readFile(assets.composition, "utf8")).toContain("prefix: |-")
     expect(await readFile(join(assets.skillsDirectory, "plot-simulation", "SKILL.md"), "utf8"))
       .toContain("name: plot-simulation")
     expect(await readFile(join(assets.skillsDirectory, "state-recorder", "SKILL.md"), "utf8"))

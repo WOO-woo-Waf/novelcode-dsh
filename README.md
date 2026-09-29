@@ -1,5 +1,13 @@
 # NovelCode DSH
 
+## OpenViking next（2026-09-09）
+
+本工作树是 DSH 0.1.3-alpha.2 + OpenViking 资源/指导 + Narrative V2 的首轮实现。
+以连贯、人物表现、条件化文风和长篇状态同时服务正文质量；不替换小说领域核心。
+使用 [首轮启动与人工验证指南](docs/design-architecture/openviking-next/NOVEL_NEXT_FIRST_ROUND_2026-09-09.md)。
+启动：`node scripts/start-next.mjs`，独立配置 `runtime/dsh`、端口 3088；OpenViking 默认 1938。
+下文 rc.8 为历史基线说明，不是 next 安装指令。
+
 NovelCode DSH is an independent DeepSeek Harness product for long-form fiction
 analysis, planning, state maintenance, style control, segmented drafting,
 review, and immutable manuscript assembly.

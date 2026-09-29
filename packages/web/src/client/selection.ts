@@ -1,4 +1,5 @@
-import type { ISessions, IWorkspaces } from "@deepseek-ai/dsh-client-runtime/client"
+import type { ISessions } from "@deepseek-ai/dsh-api-session-controller/client"
+import type { IWorkspaces } from "@deepseek-ai/dsh-api-workspace-controller/client"
 import type { NovelWorkbenchController, WorkbenchTarget } from "./controller.js"
 
 export interface WorkbenchSelectionSources {
@@ -11,7 +12,7 @@ export function selectedWorkbenchTarget(sources: WorkbenchSelectionSources): Wor
   const workspaces = sources.workspaces.list.getSnapshot()
   const current = sessions.current
   const selected = current === undefined
-    ? workspaces.items.find((workspace) => workspace.workspaceId === workspaces.recentWorkspaceId)
+    ? workspaces.items[0]
     : workspaces.items.find((workspace) => workspace.sessionIds.includes(current))
   if (selected === undefined) return undefined
   return { workspaceId: String(selected.workspaceId), title: selected.title }

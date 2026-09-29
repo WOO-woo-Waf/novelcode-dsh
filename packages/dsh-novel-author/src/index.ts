@@ -42,6 +42,8 @@ import { AuthorCapabilityStore } from "./author-capability.js"
 import { eventForAction, operationalEventData } from "./events.js"
 import { NOVEL_SYSTEM_PROMPT } from "./prompt.js"
 import { WorkspaceOperationQueue } from "./workspace-queue.js"
+import { OpenVikingClient } from "@novelcode-dsh/openviking"
+import { NovelContext, type ResourceKind } from "@novelcode-dsh/writing-context"
 
 export * from "./author-capability.js"
 export * from "./events.js"
@@ -55,6 +57,8 @@ export interface Config {
   requestTimeoutMs?: number
   stderrLimitBytes?: number
   approvalTtlMs?: number
+  openvikingEndpoint?: string
+  openvikingMaxChars?: number
 }
 
 export const Config: z<Config> = z.object({
@@ -64,6 +68,8 @@ export const Config: z<Config> = z.object({
   requestTimeoutMs: z.number().default(120_000),
   stderrLimitBytes: z.number().default(16_384),
   approvalTtlMs: z.number().default(300_000),
+  openvikingEndpoint: z.string(),
+  openvikingMaxChars: z.number().default(6000),
 })
 
 declare module "@deepseek-ai/cordis" {
@@ -79,10 +85,17 @@ export class NovelService extends Service {
   private readonly provider: JsonlSidecarProvider
   private readonly capabilities: AuthorCapabilityStore
   private readonly workspaceQueue = new WorkspaceOperationQueue()
+  private readonly novelContext: NovelContext | undefined
 
   constructor(ctx: Context, config: Config) {
     super(ctx, "novel")
     const env = resolvedEnvironment(config)
+    const endpoint = config.openvikingEndpoint ?? env.NOVELCODE_OPENVIKING_URL
+    this.novelContext = endpoint ? new NovelContext(new OpenVikingClient({
+      endpoint,
+      timeoutMs: 120_000,
+      ...(env.NOVELCODE_OPENVIKING_API_KEY ? { apiKey: env.NOVELCODE_OPENVIKING_API_KEY } : {}),
+    }), { maxChars: config.openvikingMaxChars ?? 6000 }) : undefined
     this.provider = new JsonlSidecarProvider({
       launch: sidecarLaunchFromEnv(env),
       ...(config.requestTimeoutMs === undefined ? {} : { requestTimeoutMs: config.requestTimeoutMs }),
@@ -144,6 +157,23 @@ export class NovelService extends Service {
     execution: ToolExecution,
   ): Promise<NarrativeToolResult> {
     const input = buildInput(rawInput, action, execution.agent?.id)
+    // Keep the five existing tools; backend operations are explicit payloads.
+    if (action === "narrative_memory_connect") {
+      const payload = await resolveWorkspacePayload(input, workspace)
+      if (payload.backend === "openviking") {
+        if (!this.novelContext) throw new Error("Set NOVELCODE_OPENVIKING_URL for the novel next product")
+        if (payload.operation === "import") {
+          const paths = Array.isArray(payload.paths) ? payload.paths.filter((x): x is string => typeof x === "string") : []
+          const kind = payload.kind as ResourceKind
+          const entries = await this.novelContext.importFiles(workspace, paths, kind,
+            typeof payload.chapter === "number" ? payload.chapter : undefined, execution.signal)
+          return { success: true, summary: "素材/指导已提交 OpenViking；ready 才参与写作检索。Narrative V2 正式状态不变。",
+            artifacts: [".novelcode/openviking.json"], metrics: { resources: entries.length }, payload: { entries } as unknown as JsonValue }
+        }
+        const status = await this.novelContext.status(workspace, execution.signal)
+        return { success: status.health.healthy, summary: "OpenViking 资源/指导状态", artifacts: [], metrics: { resources: status.entries.length }, payload: status as unknown as JsonValue }
+      }
+    }
     if (isHighRiskNarrativeAction(action)) {
       const approved = this.capabilities.consume({
         callId: String(execution.callId),
@@ -180,6 +210,26 @@ export class NovelService extends Service {
       workspace,
       signal: execution.signal,
     })
+    if (result.success && this.novelContext && action === "narrative_writing_prepare") {
+      result = await this.novelContext.enhanceWriting(workspace, result, execution.signal)
+    }
+    if (result.success && this.novelContext && action === "narrative_memory_search") {
+      const payload = await resolveWorkspacePayload(input, workspace)
+      const query = input.query ?? String(payload.query ?? "")
+      if (query) {
+        try {
+          const hits = await this.novelContext.recall(workspace, query,
+            payload.route === "craft" ? "guidance" : undefined,
+            typeof payload.chapter === "number" ? payload.chapter : undefined, execution.signal)
+          result = { ...result, metrics: { ...result.metrics, openviking_hits: hits.length },
+            payload: { ...resultPayload(result), openviking: { status: "ready", results: hits, authority: "resource-and-guidance-only" } } }
+        } catch (e) {
+          if (execution.signal.aborted) throw e
+          result = { ...result, warnings: [...(result.warnings ?? []), "OpenViking unavailable; Narrative V2 search retained"],
+            payload: { ...resultPayload(result), openviking: { status: "degraded" } } }
+        }
+      }
+    }
     if (action === "narrative_memory_consistency_check" && result.success) {
       const snapshot = await loadConfirmedMemorySnapshot(workspace)
       result = {

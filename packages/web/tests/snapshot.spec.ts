@@ -12,6 +12,16 @@ afterEach(async () => {
 })
 
 describe("NovelCode read-only workbench snapshot", () => {
+  it("previews OpenViking receipt metadata without turning it into canon or copying content", async () => {
+    const workspace = await fixtureWorkspace()
+    await mkdir(join(workspace, ".novelcode"), { recursive: true })
+    await writeFile(join(workspace, ".novelcode/openviking.json"), JSON.stringify({ schema: "novel-openviking/v1", entries: [
+      { path: "style.md", kind: "reference", state: "ready", uri: "viking://resources/fixture", chapter: 2, content: "PRIVATE_REFERENCE_SENTINEL" },
+    ] }))
+    const snapshot = await readNovelWorkbenchSnapshot(workspace)
+    expect(snapshot.openviking).toMatchObject({ ready: 1, pending: 0, entries: [{ path: "style.md", kind: "reference", chapter: 2 }] })
+    expect(JSON.stringify(snapshot)).not.toContain("PRIVATE_REFERENCE_SENTINEL")
+  })
   it("projects V2 status, temporal memory, knowledge, writing and revisions without manuscript bodies", async () => {
     const workspace = await fixtureWorkspace()
     const snapshot = await readNovelWorkbenchSnapshot(workspace)

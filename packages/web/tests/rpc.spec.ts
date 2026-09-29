@@ -9,7 +9,7 @@ import { apply, inject } from "../src/index.js"
 const WORKSPACE_ID = "123e4567-e89b-42d3-a456-426614174000"
 
 describe("NovelCode workbench Host RPC", () => {
-  it("registers a loopback-only read channel and resolves opaque Workspace identity", async () => {
+  it("registers the alpha.2 read channel and resolves opaque Workspace identity", async () => {
     const workspace = await mkdtemp(join(tmpdir(), "novelcode-web-rpc-"))
     await mkdir(join(workspace, ".novelcode"), { recursive: true })
     await writeFile(join(workspace, ".novelcode/noveldsh.json"), JSON.stringify({
@@ -19,9 +19,8 @@ describe("NovelCode workbench Host RPC", () => {
     }), "utf8")
     let handler: ConnectionRpcHandler | undefined
     const dispose = vi.fn(async () => {})
-    const handle = vi.fn((channel: string, candidate: ConnectionRpcHandler, options: { authority: string }) => {
+    const handle = vi.fn((channel: string, candidate: ConnectionRpcHandler) => {
       expect(channel).toBe("/novelcode-workbench")
-      expect(options).toEqual({ authority: "loopback" })
       handler = candidate
       return dispose
     })

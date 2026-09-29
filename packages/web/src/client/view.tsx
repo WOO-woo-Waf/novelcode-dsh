@@ -137,6 +137,14 @@ function SourcesPanel({ snapshot }: { snapshot: NovelWorkbenchSnapshot }) {
     <MetricGrid items={[["已登记素材", sources.registered], ["启用素材", sources.active], ["素材文件", sources.files], ["分析 revision", sources.analysisRevisions]]} />
     <Section title="素材角色"><SimpleTable rows={Object.entries(sources.roleCounts)} empty="尚未登记素材。" /></Section>
     <Section title="分析状态"><SimpleTable rows={Object.entries(sources.analysisStatusCounts)} empty="尚未产生素材分析 revision。" /></Section>
+    <Section title="OpenViking 素材与指导预览">
+      <p>这里显示本地索引回执，不代表服务当前在线。正文质量仍由作者阅读判断；正式故事状态保留在 Narrative V2。</p>
+      <MetricGrid items={[["已有索引回执", snapshot.openviking?.ready ?? 0], ["待处理", snapshot.openviking?.pending ?? 0]]} />
+      <table className="novelcodeWorkbenchTable"><thead><tr><th>文件</th><th>用途</th><th>章节</th><th>回执</th></tr></thead><tbody>
+        {(snapshot.openviking?.entries ?? []).map(entry => <tr key={`${entry.uri}:${entry.chapter ?? "all"}`}><td>{entry.path}</td><td>{({ source: "本书材料", reference: "文风参考", guidance: "作者指导" } as Record<string, string>)[entry.kind] ?? entry.kind}</td><td>{entry.chapter ?? "全书"}</td><td>{entry.state}</td></tr>)}
+      </tbody></table>
+      {!snapshot.openviking?.entries.length ? <Empty text="尚未导入 OpenViking。可让导演将指定文件按本书材料、文风参考或作者指导导入。" /> : undefined}
+    </Section>
   </>
 }
 

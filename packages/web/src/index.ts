@@ -70,7 +70,6 @@ export function apply(ctx: Context): void {
         workspaces,
         (error) => { ctx.logger.error("novelcode-workbench snapshot failed: %o", error) },
       ),
-      { authority: "loopback" },
     ),
     "novelcode-workbench: read-only snapshot RPC",
   )

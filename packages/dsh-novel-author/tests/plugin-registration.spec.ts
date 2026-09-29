@@ -1,9 +1,10 @@
-import { createHash } from "node:crypto"
+import { createHash, randomUUID } from "node:crypto"
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { Context } from "@deepseek-ai/cordis"
-import { CallId } from "@deepseek-ai/dsh-llm"
+import { ToolCallId } from "@deepseek-ai/dsh-llm"
+import SessionStore, { SessionId } from "@deepseek-ai/dsh-session"
 import SystemPrompt from "@deepseek-ai/dsh-system-prompt"
 import ToolRuntime from "@deepseek-ai/dsh-tools"
 import ApprovalService, { type ApprovalOutcome } from "@deepseek-ai/dsh-user-approval"
@@ -50,7 +51,7 @@ describe("NovelCode DSH plugin registration", () => {
     try {
       const result = await ctx.tools.execute({
         signal: new AbortController().signal,
-        callId: CallId("project-status"),
+        callId: ToolCallId("project-status"),
         name: "narrative_project",
         arguments: { action: "narrative_project_status" },
         agent: {
@@ -77,7 +78,7 @@ describe("NovelCode DSH plugin registration", () => {
     try {
       const result = await ctx.tools.execute({
         signal: new AbortController().signal,
-        callId: CallId("memory-confirm"),
+        callId: ToolCallId("memory-confirm"),
         name: "narrative_memory",
         arguments: {
           action: "narrative_memory_confirm",
@@ -100,7 +101,7 @@ describe("NovelCode DSH plugin registration", () => {
     try {
       const result = await ctx.tools.execute({
         signal: new AbortController().signal,
-        callId: CallId("unbound-status"),
+        callId: ToolCallId("unbound-status"),
         name: "narrative_project",
         arguments: { action: "narrative_project_status" },
         agent: {
@@ -125,7 +126,7 @@ describe("NovelCode DSH plugin registration", () => {
     const agent = { id: "session-approved", session } as never
     const execution = {
       signal: new AbortController().signal,
-      callId: CallId("memory-confirm-approved"),
+      callId: ToolCallId("memory-confirm-approved"),
       name: "narrative_memory",
       arguments: {
         action: "narrative_memory_confirm",
@@ -143,14 +144,14 @@ describe("NovelCode DSH plugin registration", () => {
           confirmation: "author_confirmed",
         },
       })
-      expect(session.events.map((event) => event.type)).toEqual([
+      expect(session.snapshotEvents().map((event) => event.type)).toEqual([
         "turn/start",
         "approval/asked",
         "approval/decided",
         "novel/memory-transition",
         "novel/author-approved",
       ])
-      expect(session.events[2]).toMatchObject({ data: { outcome: "allowed-once" } })
+      expect(session.snapshotEvents()[2]).toMatchObject({ data: { outcome: "allowed-once" } })
 
       await expect(ctx.novel.execute(
         "narrative_memory",
@@ -171,7 +172,7 @@ describe("NovelCode DSH plugin registration", () => {
     try {
       const result = await ctx.tools.execute({
         signal: new AbortController().signal,
-        callId: CallId("memory-confirm-rejected"),
+        callId: ToolCallId("memory-confirm-rejected"),
         name: "narrative_memory",
         arguments: { action: "narrative_memory_confirm", payload: { proposal_id: "proposal-rejected" } },
         agent: { id: "session-rejected", session } as never,
@@ -180,7 +181,7 @@ describe("NovelCode DSH plugin registration", () => {
       expect(result.content).toEqual(expect.arrayContaining([
         expect.objectContaining({ type: "text", text: expect.stringContaining("user rejected") }),
       ]))
-      expect(session.events.map((event) => event.type)).toEqual([
+      expect(session.snapshotEvents().map((event) => event.type)).toEqual([
         "turn/start",
         "approval/asked",
         "approval/decided",
@@ -200,7 +201,7 @@ describe("NovelCode DSH plugin registration", () => {
     try {
       const result = await ctx.tools.execute({
         signal: new AbortController().signal,
-        callId: CallId("branch-orchestration"),
+        callId: ToolCallId("branch-orchestration"),
         name: "narrative_plan",
         arguments: { action: "narrative_blueprint_propose", payload: branchEnvelope(baseline, baselineHash) },
         agent: { id: "session-branch", session } as never,
@@ -216,7 +217,7 @@ describe("NovelCode DSH plugin registration", () => {
           promotion_boundary: "proposal_only",
         },
       })
-      expect(session.events.map((event) => event.type)).toEqual(["turn/start", "novel/blueprint-transition"])
+      expect(session.snapshotEvents().map((event) => event.type)).toEqual(["turn/start", "novel/blueprint-transition"])
     } finally {
       await rm(workspace, { recursive: true, force: true })
     }
@@ -233,7 +234,7 @@ describe("NovelCode DSH plugin registration", () => {
     try {
       const result = await ctx.tools.execute({
         signal: new AbortController().signal,
-        callId: CallId("stale-branch-orchestration"),
+        callId: ToolCallId("stale-branch-orchestration"),
         name: "narrative_plan",
         arguments: { action: "narrative_blueprint_propose", payload: envelope },
         agent: { id: "session-stale", session: openSession(workspace) } as never,
@@ -270,7 +271,7 @@ describe("NovelCode DSH plugin registration", () => {
     try {
       const result = await ctx.tools.execute({
         signal: new AbortController().signal,
-        callId: CallId("state-orchestration"),
+        callId: ToolCallId("state-orchestration"),
         name: "narrative_memory",
         arguments: {
           action: "narrative_memory_propose",
@@ -336,15 +337,10 @@ async function mount(withApproval = false): Promise<Context> {
 }
 
 function openSession(workspace: string) {
-  const events: Array<{ type: string; data?: unknown }> = [{ type: "turn/start" }]
-  return {
-    header: { cwd: workspace },
-    events,
-    append(type: string, data: unknown) {
-      events.push({ type, data })
-      return events.at(-1)
-    },
-  }
+  const store = new SessionStore(new Context())
+  const session = store.create(SessionId(randomUUID()), { meta: { cwd: workspace } })
+  session.append("turn/start", { turn: 0 })
+  return session
 }
 
 async function markWorkspace(workspace: string): Promise<void> {

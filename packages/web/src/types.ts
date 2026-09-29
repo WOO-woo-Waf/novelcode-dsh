@@ -101,6 +101,11 @@ export interface NovelWorkbenchSnapshot {
     analysisRevisions: number
     analysisStatusCounts: Record<string, number>
   }
+  openviking?: {
+    entries: Array<{ path: string; kind: string; state: string; uri: string; chapter?: number }>
+    ready: number
+    pending: number
+  }
   memory: {
     status: "ready" | "empty" | "invalid"
     baselineCanonHash: string

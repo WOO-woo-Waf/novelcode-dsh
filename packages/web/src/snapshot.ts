@@ -143,6 +143,7 @@ export async function readNovelWorkbenchSnapshot(
         : "not_initialized",
     },
     sources: source,
+    openviking: await readOpenVikingCatalog(root, warnings),
     memory,
     planning: {
       blueprintPages: blueprintPages.length,
@@ -167,6 +168,25 @@ export async function readNovelWorkbenchSnapshot(
       activeFinalChapters: finalEntries.filter((entry) => entry.active).length,
     },
     warnings: unique(warnings),
+  }
+}
+
+async function readOpenVikingCatalog(root: string, warnings: string[]): Promise<NonNullable<NovelWorkbenchSnapshot["openviking"]>> {
+  const path = join(root, ".novelcode", "openviking.json")
+  const empty = { entries: [], ready: 0, pending: 0 }
+  if (!await exists(path)) return empty
+  try {
+    const value = await readJson(path)
+    if (!isRecord(value) || value.schema !== "novel-openviking/v1" || !Array.isArray(value.entries)) throw new Error("invalid catalog")
+    const entries = value.entries.filter(isRecord).flatMap(entry => {
+      if (typeof entry.path !== "string" || typeof entry.kind !== "string" || typeof entry.state !== "string" || typeof entry.uri !== "string") return []
+      return [{ path: entry.path, kind: entry.kind, state: entry.state, uri: entry.uri,
+        ...(typeof entry.chapter === "number" ? { chapter: entry.chapter } : {}) }]
+    })
+    return { entries, ready: entries.filter(e => e.state === "ready").length, pending: entries.filter(e => e.state === "pending").length }
+  } catch {
+    warnings.push("OpenViking 索引回执不可读；请通过 memory_connect status 重新检查。")
+    return empty
   }
 }
 

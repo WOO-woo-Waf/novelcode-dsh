@@ -1,0 +1,32 @@
+{
+  "server": {
+    "host": "127.0.0.1",
+    "port": 1938,
+    "with_bot": false
+  },
+  "storage": {
+    "workspace": "./runtime/openviking/data"
+  },
+  "embedding": {
+    "dense": {
+      "provider": "openai",
+      "api_base": "https://YOUR-APPROVED-ENDPOINT/v1",
+      "api_key": "REPLACE_LOCALLY",
+      "model": "YOUR-EMBEDDING-MODEL",
+      "dimension": 1024
+    }
+  },
+  "vlm": {
+    "provider": "openai",
+    "api_base": "https://YOUR-APPROVED-ENDPOINT/v1",
+    "api_key": "REPLACE_LOCALLY",
+    "model": "YOUR-MODEL"
+  },
+  "memory": {
+    "extraction_enabled": false,
+    "session_skill_extraction_enabled": false
+  },
+  "ingest": {
+    "enabled": false
+  }
+}

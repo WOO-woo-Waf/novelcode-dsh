@@ -20,12 +20,12 @@ describe("NovelCode workbench browser composition", () => {
     }
     new TestSlots(ctx)
     const sessionList = observable({ current: undefined })
-    const workspaceList = observable({ items: [], recentWorkspaceId: undefined })
+    const workspaceList = observable({ items: [] })
     ctx.provide("sessions" as never, { list: sessionList } as never)
     ctx.provide("workspaces" as never, { list: workspaceList } as never)
     ctx.provide("connection" as never, {
       rpc: { call: vi.fn() },
-      hostDescription: { getSnapshot: () => ({}), subscribe: () => () => {} },
+      generation: { getSnapshot: () => ({}), subscribe: () => () => {} },
     } as unknown as ConnectionHandle as never)
 
     const fiber = ctx.plugin({ inject: [...inject], apply })

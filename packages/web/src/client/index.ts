@@ -1,5 +1,8 @@
 import type { ClientConnectionRpc, ConnectionHandle } from "@deepseek-ai/dsh-client-connection/client"
-import type { ClientContext, ISessions, IWorkspaces } from "@deepseek-ai/dsh-client-runtime/client"
+import type { Context as ClientContext } from "@deepseek-ai/cordis"
+import type { ISessions } from "@deepseek-ai/dsh-api-session-controller/client"
+import type { IWorkspaces } from "@deepseek-ai/dsh-api-workspace-controller/client"
+import type {} from "@deepseek-ai/dsh-client-ui-renderer/client"
 import type {} from "@deepseek-ai/dsh-client-ui-layout/client"
 import type {} from "@deepseek-ai/dsh-client-ui-sidebar/client"
 import { NOVEL_WORKBENCH_SNAPSHOT_SCHEMA, type NovelWorkbenchSnapshot } from "../types.js"
@@ -71,13 +74,13 @@ export function apply(ctx: ClientContext): void {
   }
   ctx.effect(() => {
     const refresh = (): void => {
-      if (connection.hostDescription.getSnapshot() === undefined) {
+      if (connection.generation.getSnapshot() === undefined) {
         controller.disconnected()
       } else if (controller.getSnapshot().open) {
         void controller.refresh()
       }
     }
-    const stopDescription = connection.hostDescription.subscribe(refresh)
+    const stopDescription = connection.generation.subscribe(refresh)
     const stopReset = ctx.on("connection/reset", refresh)
     return () => {
       stopDescription()
